@@ -70,7 +70,7 @@ class BaseAgent(ABC):
         """
         await self.log_task_start(task_data=task_data)
         system_prompt = self._get_final_system_prompt()
-        user_prompt = self._get_user_prompt(task_data=task_data)
+        user_prompt = await self._get_user_prompt(task_data=task_data)
 
         messages = [
             {"role": "system", "content": system_prompt},
@@ -253,7 +253,7 @@ class BaseAgent(ABC):
 
         return system_prompt
 
-    def _get_user_prompt(self, task_data: dict[str, Any] | None = None) -> str:
+    async def _get_user_prompt(self, task_data: dict[str, Any] | None = None) -> str:
         """
         Get the user prompt for the agent.
         Args:
