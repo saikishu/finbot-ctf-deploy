@@ -63,14 +63,26 @@ class ChallengeService:
             # Run detection
             try:
                 result: DetectionResult = await detector.check_event(event, db)
-                progress.attempts += 1
-                if progress.first_attempt_at is None:
-                    progress.first_attempt_at = datetime.now(UTC)
-                if not result.detected:
-                    progress.failed_attempts += 1
-                progress.status = (
-                    "in_progress" if progress.status == "available" else progress.status
+
+                # Only count one attempt per workflow to avoid inflation
+                # from multiple events in the same agent run.
+                workflow_id = event.get("workflow_id")
+                is_new_attempt = bool(
+                    workflow_id
+                    and workflow_id != progress.last_attempt_workflow_id
                 )
+                if is_new_attempt:
+                    progress.attempts += 1
+                    progress.last_attempt_workflow_id = workflow_id
+                    if progress.first_attempt_at is None:
+                        progress.first_attempt_at = datetime.now(UTC)
+                    if not result.detected:
+                        progress.failed_attempts += 1
+                    progress.status = (
+                        "in_progress"
+                        if progress.status == "available"
+                        else progress.status
+                    )
                 # Commit attempt tracking to release the SQLite write lock
                 # before the potentially slow scoring LLM call.
                 db.commit()

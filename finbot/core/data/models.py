@@ -422,6 +422,9 @@ class UserChallengeProgress(Base):
         Integer, nullable=True
     )  # Time from first attempt to completion
 
+    # Dedup: only count one attempt per workflow
+    last_attempt_workflow_id = Column[str](String(64), nullable=True)
+
     # Scoring modifier (compound multiplier: 1.0 = full points, 0.5 = half)
     points_modifier = Column[float](Float, default=1.0, nullable=False)
 
