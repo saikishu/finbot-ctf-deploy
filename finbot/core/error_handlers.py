@@ -62,7 +62,7 @@ def get_json_error_response(status_code: int, detail: str = None) -> Dict[str, A
 
 def get_error_template_name(status_code: int) -> str:
     """Get the template name for a given status code."""
-    known = {400, 403, 404, 500, 503}
+    known = {400, 401, 403, 404, 500, 503}
     if status_code in known:
         return f"{status_code}.html"
     if 400 <= status_code < 500:

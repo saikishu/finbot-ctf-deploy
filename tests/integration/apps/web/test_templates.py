@@ -78,7 +78,7 @@ class TestErrorHandling:
         """Test that error page files exist."""
         error_dir = Path("finbot/templates/errors")
 
-        for status in [400, 403, 404, 500, 503]:
+        for status in [400, 401, 403, 404, 500, 503]:
             error_file = error_dir / f"{status}.html"
             assert error_file.exists()
         assert (error_dir / "403_csrf.html").exists()
