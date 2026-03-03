@@ -755,6 +755,148 @@ async def get_payment_transactions(
 
 
 # =============================================================================
+# FinDrive file endpoints (vendor-scoped)
+# =============================================================================
+
+
+class FileCreateRequest(BaseModel):
+    filename: str
+    content: str
+    folder: str = "/invoices"
+
+
+class FileUpdateRequest(BaseModel):
+    filename: str | None = None
+    content: str | None = None
+
+
+@router.get("/findrive")
+async def list_vendor_files(
+    limit: int = 100,
+    session_context: SessionContext = Depends(get_session_context),
+):
+    """List files for current vendor from FinDrive."""
+    if not session_context.current_vendor_id:
+        raise HTTPException(status_code=400, detail="Vendor context required")
+
+    from finbot.mcp.servers.findrive.repositories import FinDriveFileRepository
+
+    db = next(get_db())
+    repo = FinDriveFileRepository(db, session_context)
+    files = repo.list_files(vendor_id=session_context.current_vendor_id, limit=limit)
+
+    return {
+        "files": [f.to_dict() for f in files],
+        "total_count": len(files),
+        "vendor_context": session_context.current_vendor,
+    }
+
+
+@router.post("/findrive")
+async def create_vendor_file(
+    file_data: FileCreateRequest,
+    session_context: SessionContext = Depends(get_session_context),
+):
+    """Upload a file to FinDrive for current vendor."""
+    if not session_context.current_vendor_id:
+        raise HTTPException(status_code=400, detail="Vendor context required")
+
+    from finbot.mcp.servers.findrive.repositories import FinDriveFileRepository
+
+    db = next(get_db())
+    repo = FinDriveFileRepository(db, session_context)
+    f = repo.create_file(
+        filename=file_data.filename,
+        content_text=file_data.content,
+        vendor_id=session_context.current_vendor_id,
+        folder_path=file_data.folder,
+    )
+
+    return {
+        "success": True,
+        "file": f.to_dict(),
+    }
+
+
+@router.get("/findrive/{file_id}")
+async def get_vendor_file(
+    file_id: int,
+    session_context: SessionContext = Depends(get_session_context),
+):
+    """Get a file's content from FinDrive."""
+    if not session_context.current_vendor_id:
+        raise HTTPException(status_code=400, detail="Vendor context required")
+
+    from finbot.mcp.servers.findrive.repositories import FinDriveFileRepository
+
+    db = next(get_db())
+    repo = FinDriveFileRepository(db, session_context)
+    f = repo.get_file(file_id)
+
+    if not f:
+        raise HTTPException(status_code=404, detail="File not found")
+    if f.vendor_id != session_context.current_vendor_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    return {"file": f.to_dict_with_content()}
+
+
+@router.put("/findrive/{file_id}")
+async def update_vendor_file(
+    file_id: int,
+    file_data: FileUpdateRequest,
+    session_context: SessionContext = Depends(get_session_context),
+):
+    """Update a file in FinDrive."""
+    if not session_context.current_vendor_id:
+        raise HTTPException(status_code=400, detail="Vendor context required")
+
+    from finbot.mcp.servers.findrive.repositories import FinDriveFileRepository
+
+    db = next(get_db())
+    repo = FinDriveFileRepository(db, session_context)
+    f = repo.get_file(file_id)
+
+    if not f:
+        raise HTTPException(status_code=404, detail="File not found")
+    if f.vendor_id != session_context.current_vendor_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    updated = repo.update_file(
+        file_id,
+        filename=file_data.filename,
+        content_text=file_data.content,
+    )
+
+    return {"success": True, "file": updated.to_dict() if updated else None}
+
+
+@router.delete("/findrive/{file_id}")
+async def delete_vendor_file(
+    file_id: int,
+    session_context: SessionContext = Depends(get_session_context),
+):
+    """Delete a file from FinDrive."""
+    if not session_context.current_vendor_id:
+        raise HTTPException(status_code=400, detail="Vendor context required")
+
+    from finbot.mcp.servers.findrive.repositories import FinDriveFileRepository
+
+    db = next(get_db())
+    repo = FinDriveFileRepository(db, session_context)
+    f = repo.get_file(file_id)
+
+    if not f:
+        raise HTTPException(status_code=404, detail="File not found")
+    if f.vendor_id != session_context.current_vendor_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    repo.delete_file(file_id)
+
+    return {"success": True, "deleted": True}
+
+
+# =============================================================================
 # Message endpoints (vendor-scoped)
 # =============================================================================
 
