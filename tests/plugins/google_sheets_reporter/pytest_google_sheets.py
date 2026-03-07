@@ -22,16 +22,49 @@ ISOLATION_TESTING_FRAMEWORK = 'Isolation Testing Framework TCs'
 SECURE_SESSION_MANAGEMENT = 'Secure Session Management'
 BASE_AGENT_FRAMEWORK = 'Base Agent Framework'
 SPECIALIZED_BUSINESS_AGENT = 'Specialized Business Agent'
+EVENT_DRIVEN_CTF = 'Event Driven CTF'
 MULTI_DB_SUPPORT = 'Multi-DB-Support'
 
 
 class GoogleSheetsReporter:
     """Handles updating a specific Google Sheets worksheet with test results."""
-    
+
     def __init__(self, worksheet_name: str):
-        """Initialize connection to a specific worksheet."""
+        """Store config; defer Google API connection until first write."""
         self.worksheet_name = worksheet_name
         self.results: List[dict] = []
+
+        # Validate required env vars eagerly (fast, no network)
+        self._credentials_json = os.getenv('GOOGLE_CREDENTIALS')
+        self._sheets_id = os.getenv('GOOGLE_SHEETS_ID')
+        if not self._sheets_id:
+            raise ValueError("GOOGLE_SHEETS_ID not set in environment")
+        self._credentials_file = os.getenv('GOOGLE_CREDENTIALS_FILE', 'google-credentials.json')
+
+        # Lazily initialized on first write
+        self.worksheet = None
+
+    def _ensure_connected(self):
+        """Connect to Google Sheets on demand (called before any sheet operation)."""
+        if self.worksheet is not None:
+            return
+
+        scopes = ['https://www.googleapis.com/auth/spreadsheets']
+        if self._credentials_json:
+            credentials = Credentials.from_service_account_info(
+                json.loads(self._credentials_json), scopes=scopes
+            )
+        else:
+            credentials = Credentials.from_service_account_file(
+                self._credentials_file, scopes=scopes
+            )
+        client = gspread.authorize(credentials)
+        # Prevent indefinite hangs on network calls (connect_timeout, read_timeout)
+        client.http_client.timeout = (10, 30)
+        sheet = client.open_by_key(self._sheets_id)
+
+        # Get existing worksheet — never create a new tab
+        self.worksheet = sheet.worksheet(self.worksheet_name)
         
         # Get credentials from environment
         credentials_json = os.getenv('GOOGLE_CREDENTIALS')
@@ -101,6 +134,13 @@ class GoogleSheetsReporter:
         self.results.append(row)
     
     def _find_row(self, col_a: list, test_code: str, test_name: str) -> Optional[int]:
+        """Return 1-indexed row number in col_a matching test_code or test_name, or None."""
+        for query in [test_code, test_name]:
+            if not query:
+                continue
+            for i, cell_value in enumerate(col_a):
+                if cell_value and query.strip().lower() in str(cell_value).strip().lower():
+                    return i + 1
         """Return 1-indexed row number in col_a matching test_code or test_name, or None.
 
         test_code uses exact match to avoid 'BA-1' matching 'BA-10'.
@@ -132,6 +172,7 @@ class GoogleSheetsReporter:
         if not self.results:
             return
 
+        self._ensure_connected()
         col_a = self.worksheet.col_values(1)
         cells_to_update = []
         timestamp = datetime.now().isoformat()
@@ -178,18 +219,20 @@ class GoogleSheetsReporter:
     
     def _save_summary_row_for_worksheet(self, worksheet_name: str, results: list):
         """Create summary row for a specific worksheet."""
+        self._ensure_connected()
         total_tests = len(results)
         passed_tests = sum(1 for r in results if r['status'] == 'PASSED')
         failed_tests = sum(1 for r in results if r['status'] == 'FAILED')
         pass_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
         total_duration = sum(float(r['duration']) for r in results)
-        
+
         test_names = "\n".join([
             f"{r['code']}: {r['name']} ({r['duration']:.2f}s)"
             for r in results
         ])
-        
+
         statuses_str = "\n".join([r['status'] for r in results])
+
         
         summary_row = [
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -215,6 +258,7 @@ def extract_iso_code(docstring: Optional[str]) -> Optional[str]:
 
 def detect_test_category(item) -> str:
     """Detect which Google Sheets worksheet a test belongs to based on file path."""
+    fspath = str(item.fspath).lower()
     full_path = str(item.fspath).lower()
 
     # Strip everything before the first 'tests/' component so that keywords
@@ -248,6 +292,7 @@ def detect_test_category(item) -> str:
         'auth': SECURE_SESSION_MANAGEMENT,
         'session': SECURE_SESSION_MANAGEMENT,
         'security': 'Security Penetration Testing',
+        'test_event_driven_ctf_backend': EVENT_DRIVEN_CTF,
         'ctf': 'CTF Challenge Validation',
         'performance': 'Performance Testing',
         'browser': 'Cross_Browser',
@@ -274,6 +319,7 @@ class GoogleSheetsPlugin:
         COMPLETE_USER_ISOLATION,
         BASE_AGENT_FRAMEWORK,
         SPECIALIZED_BUSINESS_AGENT,
+        EVENT_DRIVEN_CTF,
         MULTI_DB_SUPPORT,
         LLM_CLIENT,
         LLM_MOCK_CLIENT,
@@ -297,6 +343,7 @@ class GoogleSheetsPlugin:
                 SECURE_SESSION_MANAGEMENT,
                 BASE_AGENT_FRAMEWORK,
                 SPECIALIZED_BUSINESS_AGENT,
+                EVENT_DRIVEN_CTF,
                 MULTI_DB_SUPPORT,
                 'Security Penetration Testing',
                 'CTF Challenge Validation',
@@ -440,7 +487,7 @@ class GoogleSheetsPlugin:
         print("=" * 90)
 
 
-# Module-level pytest hooks (NOT indented)
+# Module-level pytest hooks 
 def pytest_addoption(parser):
     """Add custom command-line options."""
     parser.addoption(
