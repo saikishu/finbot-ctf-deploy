@@ -837,7 +837,8 @@ async def get_payment_transactions(
 class FileCreateRequest(BaseModel):
     filename: str
     content: str
-    folder: str = "/invoices"
+    folder: str = "/"
+    file_type: str = "pdf"
 
 
 class FileUpdateRequest(BaseModel):
@@ -885,6 +886,7 @@ async def create_vendor_file(
         content_text=file_data.content,
         vendor_id=session_context.current_vendor_id,
         folder_path=file_data.folder,
+        file_type=file_data.file_type,
     )
 
     return {
