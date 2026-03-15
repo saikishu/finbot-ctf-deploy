@@ -10,6 +10,9 @@ from finbot.ctf.detectors.implementations.invoice_trust_override import (
 from finbot.ctf.detectors.implementations.policy_bypass_non_compliant import (
     PolicyBypassNonCompliantDetector,
 )
+from finbot.ctf.detectors.implementations.rce import (
+    RCEDetector,
+)
 from finbot.ctf.detectors.implementations.system_prompt_leak import (
     SystemPromptLeakDetector,
 )
@@ -27,6 +30,7 @@ __all__ = [
     "InvoiceThresholdBypassDetector",
     "InvoiceTrustOverrideDetector",
     "PolicyBypassNonCompliantDetector",
+    "RCEDetector",
     "SystemPromptLeakDetector",
     "ToolPoisoningExfilDetector",
     "VendorRiskDownplayDetector",
