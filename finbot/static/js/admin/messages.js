@@ -488,7 +488,7 @@ function escapeHtml(str) {
 
 function formatMessageTime(isoStr) {
     if (!isoStr) return '';
-    const date = new Date(isoStr);
+    const date = parseUTCDate(isoStr);
     const now = new Date();
     const diff = now - date;
     const mins = Math.floor(diff / 60000);
@@ -504,7 +504,7 @@ function formatMessageTime(isoStr) {
 
 function formatMessageDate(isoStr) {
     if (!isoStr) return '';
-    const date = new Date(isoStr);
+    const date = parseUTCDate(isoStr);
     return date.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',

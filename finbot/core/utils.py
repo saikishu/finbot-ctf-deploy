@@ -1,8 +1,19 @@
 """Core utils"""
 
 import re
+from datetime import datetime
 
 from finbot.config import settings
+
+
+def to_utc_iso(dt: datetime | None) -> str | None:
+    """Format a UTC datetime as an ISO 8601 string with 'Z' suffix.
+
+    Returns None when given None so callers can pass nullable fields directly.
+    """
+    if dt is None:
+        return None
+    return dt.isoformat().replace("+00:00", "Z")
 
 
 def normalize_user_agent(user_agent: str | None) -> str:

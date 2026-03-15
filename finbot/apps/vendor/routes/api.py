@@ -1,7 +1,7 @@
 """Vendor Portal API Routes"""
 
 import secrets
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from finbot.agents.runner import run_orchestrator_agent
 from finbot.core.auth.middleware import get_session_context
+from finbot.core.utils import to_utc_iso
 from finbot.core.auth.session import SessionContext
 from finbot.core.data.database import get_db
 from finbot.core.data.repositories import (
@@ -489,8 +490,8 @@ async def get_dashboard_metrics(
                 "amount": float(inv.amount),
                 "status": inv.status,
                 "description": inv.description,
-                "due_date": inv.due_date.isoformat() if inv.due_date else None,
-                "created_at": inv.created_at.isoformat() if inv.created_at else None,
+                "due_date": to_utc_iso(inv.due_date),
+                "created_at": to_utc_iso(inv.created_at),
             }
             for inv in recent_invoices
         ],
@@ -518,8 +519,8 @@ async def get_invoices(
                 "amount": float(inv.amount),
                 "status": inv.status,
                 "description": inv.description,
-                "due_date": inv.due_date.isoformat() if inv.due_date else None,
-                "created_at": inv.created_at.isoformat(),
+                "due_date": to_utc_iso(inv.due_date),
+                "created_at": to_utc_iso(inv.created_at),
             }
             for inv in invoices
         ],
@@ -539,10 +540,11 @@ async def create_invoice(
     invoice_repo = InvoiceRepository(db, session_context)
 
     try:
-        # Parse date strings to datetime objects
         invoice_dict = invoice_data.model_dump()
-        invoice_dict["invoice_date"] = datetime.fromisoformat(invoice_data.invoice_date)
-        invoice_dict["due_date"] = datetime.fromisoformat(invoice_data.due_date)
+        inv_date = datetime.fromisoformat(invoice_data.invoice_date)
+        invoice_dict["invoice_date"] = inv_date if inv_date.tzinfo else inv_date.replace(tzinfo=UTC)
+        due = datetime.fromisoformat(invoice_data.due_date)
+        invoice_dict["due_date"] = due if due.tzinfo else due.replace(tzinfo=UTC)
 
         attachments_list = invoice_dict.pop("attachments", [])
         import json as _json
@@ -582,10 +584,8 @@ async def create_invoice(
                 "invoice_number": invoice.invoice_number,
                 "amount": float(invoice.amount),
                 "description": invoice.description,
-                "invoice_date": invoice.invoice_date.isoformat()
-                if invoice.invoice_date
-                else None,
-                "due_date": invoice.due_date.isoformat() if invoice.due_date else None,
+                "invoice_date": to_utc_iso(invoice.invoice_date),
+                "due_date": to_utc_iso(invoice.due_date),
             },
             session_context=session_context,
             workflow_id=workflow_id,
@@ -665,9 +665,11 @@ async def update_invoice(
     if invoice_data.description is not None:
         updates["description"] = invoice_data.description
     if invoice_data.invoice_date is not None:
-        updates["invoice_date"] = datetime.fromisoformat(invoice_data.invoice_date)
+        inv_dt = datetime.fromisoformat(invoice_data.invoice_date)
+        updates["invoice_date"] = inv_dt if inv_dt.tzinfo else inv_dt.replace(tzinfo=UTC)
     if invoice_data.due_date is not None:
-        updates["due_date"] = datetime.fromisoformat(invoice_data.due_date)
+        due_dt = datetime.fromisoformat(invoice_data.due_date)
+        updates["due_date"] = due_dt if due_dt.tzinfo else due_dt.replace(tzinfo=UTC)
     if invoice_data.attachments is not None:
         import json as _json
 
@@ -690,12 +692,8 @@ async def update_invoice(
             "amount": float(updated_invoice.amount),
             "status": updated_invoice.status,
             "description": updated_invoice.description,
-            "invoice_date": updated_invoice.invoice_date.isoformat()
-            if updated_invoice.invoice_date
-            else None,
-            "due_date": updated_invoice.due_date.isoformat()
-            if updated_invoice.due_date
-            else None,
+            "invoice_date": to_utc_iso(updated_invoice.invoice_date),
+            "due_date": to_utc_iso(updated_invoice.due_date),
         },
     }
 
@@ -743,17 +741,11 @@ async def reprocess_invoice(
             "amount": float(invoice.amount),
             "status": invoice.status,
             "description": invoice.description,
-            "invoice_date": invoice.invoice_date.isoformat()
-            if invoice.invoice_date
-            else None,
-            "due_date": invoice.due_date.isoformat() if invoice.due_date else None,
+            "invoice_date": to_utc_iso(invoice.invoice_date),
+            "due_date": to_utc_iso(invoice.due_date),
             "agent_notes": invoice.agent_notes,
-            "created_at": invoice.created_at.isoformat()
-            if invoice.created_at
-            else None,
-            "updated_at": invoice.updated_at.isoformat()
-            if invoice.updated_at
-            else None,
+            "created_at": to_utc_iso(invoice.created_at),
+            "updated_at": to_utc_iso(invoice.updated_at),
         },
         session_context=session_context,
         workflow_id=workflow_id,
