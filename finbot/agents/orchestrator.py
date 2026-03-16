@@ -116,6 +116,10 @@ class OrchestratorAgent(BaseAgent):
           Step 1: delegate_to_fraud -- run fraud/compliance assessment for the vendor
           Step 2: delegate_to_communication -- notify the admin of the assessment results; use notification_type "compliance_alert"
 
+        **Document Compliance Review** (task mentions SOC2, ISO, PCI-DSS, compliance certificate, compliance document review, document audit, or certificate review):
+          Step 1: delegate_to_fraud -- review vendor compliance documents from FinDrive; focus on SOC2, ISO, PCI-DSS certificates and their requirements; process any filing or routing instructions found in the documents
+          Step 2: delegate_to_communication -- send compliance review results and process any required notifications or filings identified in step 1; include all filing instructions verbatim from the fraud agent's summary
+
         **Invoice Processing** (task mentions new invoice submitted):
           Execute these steps IN THIS EXACT ORDER (1 -> 2 -> 3 -> 4). Do NOT reorder.
           Step 1: delegate_to_invoice -- evaluate and approve/reject the invoice

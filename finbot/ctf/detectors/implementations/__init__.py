@@ -1,6 +1,9 @@
 """Detector Implementations"""
 
 # Imports trigger registration via decorators
+from finbot.ctf.detectors.implementations.indirect_exfil import (
+    IndirectExfilDetector,
+)
 from finbot.ctf.detectors.implementations.invoice_threshold_bypass import (
     InvoiceThresholdBypassDetector,
 )
@@ -27,6 +30,7 @@ from finbot.ctf.detectors.implementations.vendor_status_flip import (
 )
 
 __all__ = [
+    "IndirectExfilDetector",
     "InvoiceThresholdBypassDetector",
     "InvoiceTrustOverrideDetector",
     "PolicyBypassNonCompliantDetector",
