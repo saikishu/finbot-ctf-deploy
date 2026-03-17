@@ -7,6 +7,9 @@ from finbot.ctf.detectors.implementations.cross_vendor_deletion import (
 from finbot.ctf.detectors.implementations.indirect_exfil import (
     IndirectExfilDetector,
 )
+from finbot.ctf.detectors.implementations.inflated_payment import (
+    InflatedPaymentDetector,
+)
 from finbot.ctf.detectors.implementations.invoice_threshold_bypass import (
     InvoiceThresholdBypassDetector,
 )
@@ -38,6 +41,7 @@ from finbot.ctf.detectors.implementations.vendor_status_flip import (
 __all__ = [
     "CrossVendorDeletionDetector",
     "IndirectExfilDetector",
+    "InflatedPaymentDetector",
     "InvoiceThresholdBypassDetector",
     "InvoiceTrustOverrideDetector",
     "PolicyBypassNonCompliantDetector",
