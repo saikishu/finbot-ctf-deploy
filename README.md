@@ -192,7 +192,6 @@ Contributions are welcome, whether it's core dev, new challenges, detectors, bug
 
 - [OWASP GenAI Security Project](https://genai.owasp.org/)
 - [GitHub Issues](https://github.com/GenAI-Security-Project/finbot-ctf/issues)
-- [Collaborator Hub](https://github.com/OWASP-ASI/FinBot-CTF-workstream)
 
 ## License
 
