@@ -3,37 +3,33 @@ FinBot Platform Main Application
 - Serves all the applications for the FinBot platform.
 """
 
-import os
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from finbot.config import settings
 from finbot.apps.admin.main import app as admin_app
 from finbot.apps.cc import models as _cc_models  # noqa: F401
-from finbot.core.analytics import models as _analytics_models  # noqa: F401
 from finbot.apps.ctf import ctf_app
 from finbot.apps.ctf.rendering import get_renderer
-from finbot.apps.vendor.main import app as vendor_app
 from finbot.apps.finbot.auth import router as auth_router
 from finbot.apps.finbot.routes import router as finbot_router
+from finbot.apps.vendor.main import app as vendor_app
 from finbot.apps.web.routes import router as web_router
+from finbot.config import settings
+from finbot.core.analytics import models as _analytics_models  # noqa: F401
 from finbot.core.auth.csrf import CSRFProtectionMiddleware
 from finbot.core.auth.middleware import SessionMiddleware, get_session_context
-from finbot.core.auth.session import SessionContext, session_manager
+from finbot.core.auth.session import SessionContext
 from finbot.core.data import (
     models as _models,  # noqa: F401 — register all tables with Base
 )
-from finbot.core.data.database import create_tables, run_migrations
 from finbot.core.error_handlers import register_error_handlers
 from finbot.core.messaging import event_bus
 from finbot.core.websocket import websocket_router
 
 # CTF
-from finbot.ctf.definitions.loader import load_definitions_on_startup
 from finbot.ctf.processor import start_processor_task
 
 # Logging
@@ -47,51 +43,15 @@ setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifecycle management"""
+    """Application lifecycle management.
 
-    # 1. Run database migrations to ensure schema is up to date
-    run_migrations()
+    Only per-worker initialization belongs here. One-time bootstrap tasks
+    (migrations, seeding, cleanup, CTF definition loading) run in
+    ``scripts/bootstrap.py`` — called by ``run.py`` for local dev and
+    by ``docker/entrypoint.sh`` for Docker deployments.
+    """
 
-    # 2. Seed CC admins (must happen after migrations create the tables)
-    if settings.CC_ENABLED:
-        try:
-            from finbot.apps.cc.auth import seed_admins_from_env  # pylint: disable=import-outside-toplevel
-
-            seeded = seed_admins_from_env()
-            if seeded > 0:
-                print(f"🔑 Seeded {seeded} CC admins from env")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"⚠️ CC admin seeding skipped: {e}")
-
-    # 3. Cleanup expired sessions
-    try:
-        cleaned_count = session_manager.cleanup_expired_sessions()
-        if cleaned_count > 0:
-            print(f"🧹 Cleaned up {cleaned_count} expired sessions on startup")
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"⚠️ Session cleanup skipped: {e}")
-
-    # 3b. Cleanup old analytics data
-    if settings.CC_ANALYTICS_ENABLED:
-        try:
-            from finbot.core.analytics.retention import cleanup_old_pageviews
-            cleaned = cleanup_old_pageviews()
-            if cleaned > 0:
-                print(f"📊 Cleaned up {cleaned} old pageviews (>{settings.ANALYTICS_RETENTION_DAYS}d)")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            print(f"⚠️ Analytics cleanup skipped: {e}")
-
-    # 4. Load CTF definitions from YAML
-    try:
-        result = load_definitions_on_startup()
-        print(
-            f"🎯 CTF loaded: {len(result['challenges'])} challenges, "
-            f"{len(result['badges'])} badges"
-        )
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"⚠️ CTF definition loading failed: {e}")
-
-    # 5. Start CTF event processor as async task
+    # 1. Start CTF event processor (Redis consumer groups — multi-worker safe)
     processor_task = None
     try:
         processor_task = start_processor_task()
@@ -99,7 +59,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"⚠️ CTF processor start failed: {e}")
 
-    # 6. Pre-warm the Playwright renderer (headless Chromium for OG images)
+    # 2. Pre-warm the Playwright renderer (headless Chromium for OG images)
     renderer = get_renderer()
     try:
         await renderer.start()
@@ -145,6 +105,7 @@ app = FastAPI(
 # Analytics runs after session (needs session context), before CSRF
 if settings.CC_ANALYTICS_ENABLED:
     from finbot.core.analytics.middleware import AnalyticsMiddleware
+
     app.add_middleware(AnalyticsMiddleware)
 
 # Execute session first, then CSRF

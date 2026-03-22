@@ -3,11 +3,34 @@
 See Collaborator Hub for details on this project: https://github.com/OWASP-ASI/FinBot-CTF-workstream
 
 
-## Dev Guide (Temporary)
+## Quick Start (Docker)
 
-** Warning: `main` branch is potentially unstable **
+The fastest way to get running. Requires only Docker.
 
-Please follow below instructions to test drive the current branch
+```bash
+# 1. Configure environment
+cp .env.example .env
+# Edit .env — add your OPENAI_API_KEY at minimum
+
+# 2a. SQLite (default, zero-config):
+docker compose up
+
+# 2b. PostgreSQL:
+#     Set DATABASE_TYPE=postgresql in .env, then:
+docker compose --profile postgres up
+```
+
+Platform runs at http://localhost:8000
+
+### Playwright support (optional)
+
+To enable OG image rendering (Playwright + Chromium), build the full image:
+
+```bash
+DOCKER_TARGET=app-full docker compose up --build
+```
+
+## Local Dev (without Docker)
 
 ### Prerequisites
 
