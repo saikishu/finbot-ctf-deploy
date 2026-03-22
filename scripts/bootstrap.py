@@ -1,9 +1,14 @@
 """
-FinBot CTF Bootstrap — one-time startup tasks.
+Bootstrap
 
-Run this before starting the server to prepare the database and
-seed initial data.  The Docker entrypoint calls this automatically;
-for local dev, run.py calls it before launching uvicorn.
+One-time startup tasks: run migrations, seed CC admins, clean up
+expired sessions and old analytics, load CTF definitions from YAML.
+Every operation is idempotent and safe to call repeatedly.
+
+Called automatically by run.py (local dev) and docker/entrypoint.sh
+(Docker). You should not need to run this manually.
+
+Audience: Core setup — called automatically at startup.
 
 Usage:
     python scripts/bootstrap.py

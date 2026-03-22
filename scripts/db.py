@@ -1,15 +1,20 @@
 """
-FinBot CTF Database Management CLI
+Database Management CLI
 
-Replaces the old setup_database.py with Alembic-backed migrations.
+Alembic-backed database management for FinBot CTF.
+Handles initial setup, running/rolling-back migrations,
+inspecting migration history, and generating new migrations
+from model changes.
+
+Audience: Core setup and development.
 
 Usage:
-    python scripts/db.py setup       # Create database (if PostgreSQL) + run migrations
-    python scripts/db.py migrate     # Run pending migrations (alembic upgrade head)
-    python scripts/db.py rollback    # Undo the last migration (alembic downgrade -1)
-    python scripts/db.py status      # Show current revision and migration history
-    python scripts/db.py generate "description"  # Auto-generate a new migration
-    python scripts/db.py stamp       # Stamp existing database at head (no DDL)
+    python scripts/db.py setup                  # Create DB + run all migrations
+    python scripts/db.py migrate                # Run pending migrations
+    python scripts/db.py rollback               # Undo the last migration
+    python scripts/db.py status                 # Show current revision and history
+    python scripts/db.py generate "description" # Auto-generate a new migration
+    python scripts/db.py stamp                  # Stamp existing DB at head (no DDL)
 """
 
 import argparse

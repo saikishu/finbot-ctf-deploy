@@ -1,9 +1,14 @@
 """
-Seed the page_views table with realistic mock analytics data,
-plus UserProfile records for social feature testing.
+Seed Analytics Data
+
+Populates the page_views table with realistic mock pageview data and
+creates mock UserProfile records for testing the Command Center analytics
+dashboard and social/profile features.
+
+Audience: Development/testing only.
 
 Usage:
-    python scripts/seed_analytics.py            # insert ~2500 pageviews over 30 days
+    python scripts/seed_analytics.py            # ~2500 pageviews over 30 days
     python scripts/seed_analytics.py --days 14  # 14 days of data
     python scripts/seed_analytics.py --clear    # wipe existing data first
 """
@@ -35,26 +40,27 @@ MOCK_BADGE_IDS = [
 PATHS = [
     ("/", 30),
     ("/portals", 25),
-    ("/portals/finbot", 18),
-    ("/portals/cineflow", 8),
-    ("/agreement", 12),
+    ("/about", 12),
+    ("/stats", 6),
+    ("/agreement", 10),
     ("/auth/magic-link", 15),
     ("/auth/verify", 10),
     ("/ctf", 14),
     ("/ctf/challenges", 12),
-    ("/ctf/scoreboard", 10),
-    ("/ctf/profile", 6),
-    ("/ctf/badges", 4),
-    ("/demo/cineflow", 3),
-    ("/vendor/dashboard", 5),
-    ("/vendor/settings", 2),
-    ("/admin/dashboard", 2),
-    ("/api/session/status", 8),
+    ("/ctf/badges", 8),
+    ("/ctf/activity", 6),
+    ("/ctf/profile/settings", 5),
+    ("/vendor/dashboard", 8),
+    ("/vendor/settings", 3),
+    ("/admin/dashboard", 3),
+    ("/api/session/status", 6),
+    ("/demo/cineflow", 1),
 ]
 
 SHARE_PATHS = [
+    (lambda: f"/ctf/h/{random.choice(MOCK_USERNAMES)}", 6),
     (lambda: f"/ctf/share/profile/{random.choice(MOCK_USERNAMES)}/card.png", 4),
-    (lambda: f"/ctf/share/badge/{random.choice(MOCK_USERNAMES)}/{random.choice(MOCK_BADGE_IDS)}/card.png", 3),
+    (lambda: f"/ctf/share/badge/{random.choice(MOCK_BADGE_IDS)}/card.png", 3),
     (lambda: f"/ctf/api/v1/profile/u/{random.choice(MOCK_USERNAMES)}", 5),
 ]
 
