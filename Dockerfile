@@ -37,6 +37,7 @@ CMD ["sh", "-c", "gunicorn finbot.main:app -k uvicorn.workers.UvicornWorker --bi
 # ── Full target: includes Playwright + Chromium for OG image rendering
 FROM base AS app-full
 
+ENV PLAYWRIGHT_BROWSERS_PATH=/app/.playwright
 RUN playwright install --with-deps chromium
 
 RUN useradd --create-home --shell /bin/bash finbot && \

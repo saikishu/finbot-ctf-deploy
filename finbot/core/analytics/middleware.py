@@ -104,6 +104,8 @@ class AnalyticsMiddleware(BaseHTTPMiddleware):
     def _detect_scan(self, path: str, request: Request) -> str | None:
         """Detect scan/bot traffic. Returns source identifier or None."""
         path_lower = path.lower()
+        if path_lower.startswith("/http:") or path_lower.startswith("/https:"):
+            return "malformed_url"
         if path_lower in SCAN_PATHS:
             return "scan_path"
         if any(path_lower.endswith(ext) for ext in SCAN_PATTERNS):
