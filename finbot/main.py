@@ -67,6 +67,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"⚠️ Playwright renderer start skipped: {e}")
 
+    # 3. Build analytics known-prefix list from registered routes
+    if settings.CC_ANALYTICS_ENABLED:
+        try:
+            from finbot.core.analytics.middleware import build_known_prefixes
+            build_known_prefixes(app)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"⚠️ Analytics prefix build skipped: {e}")
+
     yield  # App is running
 
     # Shut down Playwright renderer

@@ -26,11 +26,23 @@ SKIP_PREFIXES = (
 
 SKIP_EXTENSIONS = (".js", ".css", ".png", ".jpg", ".ico", ".svg", ".woff", ".woff2")
 
-KNOWN_APP_PREFIXES = (
-    "/", "/portals", "/agreement", "/auth",
-    "/ctf", "/vendor", "/admin", "/demo",
-    "/api/",
-)
+_known_app_prefixes: tuple[str, ...] = ()
+
+
+def build_known_prefixes(app) -> None:
+    """Extract top-level route prefixes from the FastAPI app.
+    Call once during application lifespan startup.
+    """
+    global _known_app_prefixes  # pylint: disable=global-statement
+    prefixes = set()
+    for route in app.routes:
+        path = getattr(route, "path", None)
+        if not path:
+            continue
+        parts = path.strip("/").split("/")
+        if parts and parts[0]:
+            prefixes.add("/" + parts[0])
+    _known_app_prefixes = tuple(sorted(prefixes))
 
 SCAN_PATHS = frozenset({
     "/.env", "/.git", "/.git/config", "/.gitignore",
@@ -120,7 +132,7 @@ class AnalyticsMiddleware(BaseHTTPMiddleware):
     def _is_unknown_404(self, path: str, response: Response) -> bool:
         """Detect 404s for paths outside known app routes."""
         if response.status_code == 404:
-            if not any(path.startswith(p) for p in KNOWN_APP_PREFIXES):
+            if not any(path.startswith(p) for p in _known_app_prefixes):
                 return True
         return False
 
