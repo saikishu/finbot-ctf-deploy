@@ -37,6 +37,32 @@ class TestValidateWebhookUrl:
             ("", "required"),
             ("ftp://example.com/hook", "scheme"),
             ("https://", "hostname"),
+            ("https://metadata.google.internal/v1", "not allowed"),
+            ("https://example.com:22/hook", "not in the allowed range"),
+        ],
+    )
+    def test_always_blocked_urls(self, url, expected_fragment):
+        ok, err = validate_webhook_url(url)
+        assert ok is False
+        assert expected_fragment.lower() in err.lower()
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://localhost:5000/hook",
+            "http://127.0.0.1:8080/hook",
+            "http://10.0.0.5:3000/hook",
+            "http://192.168.1.1:9000/hook",
+        ],
+    )
+    def test_local_urls_allowed_in_debug(self, url):
+        """In DEBUG mode (default for tests), local endpoints are allowed."""
+        ok, err = validate_webhook_url(url)
+        assert ok is True, f"Expected allowed in debug mode, got: {err}"
+
+    @pytest.mark.parametrize(
+        "url,expected_fragment",
+        [
             ("https://localhost/hook", "not allowed"),
             ("https://127.0.0.1/hook", "blocked range"),
             ("https://10.0.0.5/hook", "blocked range"),
@@ -44,11 +70,11 @@ class TestValidateWebhookUrl:
             ("https://192.168.1.1/hook", "blocked range"),
             ("https://169.254.169.254/latest/meta-data/", "blocked range"),
             ("https://[::1]/hook", "blocked range"),
-            ("https://metadata.google.internal/v1", "not allowed"),
-            ("https://example.com:22/hook", "not in the allowed range"),
         ],
     )
-    def test_blocked_urls(self, url, expected_fragment):
+    def test_private_urls_blocked_in_production(self, url, expected_fragment, monkeypatch):
+        """In production (DEBUG=False), private IPs and localhost are blocked."""
+        monkeypatch.setattr("finbot.config.settings.DEBUG", False)
         ok, err = validate_webhook_url(url)
         assert ok is False
         assert expected_fragment.lower() in err.lower()
@@ -96,7 +122,8 @@ class TestLabsGuardrailConfigRepository:
         assert config2.timeout_seconds == 10
         assert config2.signing_secret == original_secret
 
-    def test_upsert_rejects_ssrf_url(self):
+    def test_upsert_rejects_ssrf_url(self, monkeypatch):
+        monkeypatch.setattr("finbot.config.settings.DEBUG", False)
         with pytest.raises(ValueError, match="blocked range"):
             self.repo.upsert(webhook_url="https://127.0.0.1/hook")
 

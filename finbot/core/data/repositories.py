@@ -1297,8 +1297,14 @@ _BLOCKED_NETWORKS = [
 def validate_webhook_url(url: str) -> tuple[bool, str | None]:
     """Validate a webhook URL for safety.
 
+    In DEBUG mode, localhost and private IPs are allowed so developers
+    can test webhooks against local servers. In production, these are
+    blocked to prevent SSRF.
+
     Returns (is_valid, error_message).
     """
+    from finbot.config import settings  # pylint: disable=import-outside-toplevel
+
     if not url:
         return False, "Webhook URL is required"
 
@@ -1314,16 +1320,20 @@ def validate_webhook_url(url: str) -> tuple[bool, str | None]:
     if not hostname:
         return False, "URL must include a hostname"
 
-    if hostname in ("localhost", "metadata.google.internal"):
+    if hostname == "metadata.google.internal":
         return False, f"Hostname '{hostname}' is not allowed"
 
-    try:
-        addr = ipaddress.ip_address(hostname)
-        for net in _BLOCKED_NETWORKS:
-            if addr in net:
-                return False, f"IP address {hostname} is in a blocked range"
-    except ValueError:
-        pass
+    if not settings.DEBUG:
+        if hostname == "localhost":
+            return False, f"Hostname '{hostname}' is not allowed"
+
+        try:
+            addr = ipaddress.ip_address(hostname)
+            for net in _BLOCKED_NETWORKS:
+                if addr in net:
+                    return False, f"IP address {hostname} is in a blocked range"
+        except ValueError:
+            pass
 
     if not parsed.port and parsed.scheme == "https":
         pass
