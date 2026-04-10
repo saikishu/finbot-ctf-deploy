@@ -74,9 +74,7 @@ class GuardrailHookService:
     def _sign_payload(body: bytes, secret: str, timestamp: str) -> str:
         """HMAC-SHA256 of 'timestamp.body' using the stored secret."""
         message = f"{timestamp}.".encode() + body
-        return hmac.new(
-            secret.encode(), message, hashlib.sha256
-        ).hexdigest()
+        return hmac.new(secret.encode(), message, hashlib.sha256).hexdigest()
 
     async def invoke(
         self,
@@ -96,7 +94,9 @@ class GuardrailHookService:
         NOT branch on the outcome (execution always proceeds).
         """
         if not self._is_hook_enabled(kind):
-            return HookOutcome.no_config if not self._config else HookOutcome.hook_disabled
+            return (
+                HookOutcome.no_config if not self._config else HookOutcome.hook_disabled
+            )
 
         config = self._config
         assert config is not None  # _is_hook_enabled guarantees this
@@ -122,7 +122,10 @@ class GuardrailHookService:
         if len(body_bytes) > max_payload:
             logger.info(
                 "guardrail payload truncated: %d -> %d bytes, hook=%s tool=%s",
-                len(body_bytes), max_payload, kind.value, tool_name,
+                len(body_bytes),
+                max_payload,
+                kind.value,
+                tool_name,
             )
             body_bytes = body_bytes[:max_payload]
 
@@ -174,8 +177,12 @@ class GuardrailHookService:
 
         logger.info(
             "guardrail hook=%s outcome=%s verdict=%s latency_ms=%d tool=%s user=%s",
-            kind.value, outcome.value, verdict_str, latency_ms,
-            tool_name, self._session_context.user_id[:8],
+            kind.value,
+            outcome.value,
+            verdict_str,
+            latency_ms,
+            tool_name,
+            self._session_context.user_id[:8],
         )
 
         await self._emit_event(
@@ -188,6 +195,7 @@ class GuardrailHookService:
             error_detail=error_detail,
             tool_name=tool_name,
             tool_source=tool_source,
+            tool_arguments=tool_arguments,
             model=model,
         )
 
@@ -205,6 +213,7 @@ class GuardrailHookService:
         error_detail: str | None,
         tool_name: str | None,
         tool_source: str | None,
+        tool_arguments: dict[str, Any] | None,
         model: str | None,
     ) -> None:
         """Emit guardrail event via the existing agent event stream."""
@@ -227,6 +236,8 @@ class GuardrailHookService:
             event_data["tool_name"] = tool_name
         if tool_source is not None:
             event_data["tool_source"] = tool_source
+        if tool_arguments is not None:
+            event_data["tool_arguments"] = tool_arguments
         if model is not None:
             event_data["model"] = model
 
