@@ -105,6 +105,7 @@ class SystemPromptLeakDetector(BaseDetector):
             message=verdict.reasoning,
             evidence={
                 "judge_score": verdict.score,
+                "leakage_score": verdict.score,
                 "judge_reasoning": verdict.reasoning,
                 "threshold": min_confidence,
             },
